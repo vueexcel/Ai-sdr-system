@@ -34,6 +34,7 @@ class ProspectPipeline {
     }
   }
 
+  // Process and store prospects in database
   async processAndStoreProspects(prospects) {
     let stored = 0;
     let skipped = 0;
@@ -65,34 +66,33 @@ class ProspectPipeline {
           }
         }
 
-        // Prepare prospect data (universal format)
-        const prospectData = {
+        // Store in database with proper data mapping
+        const storedProspect = await DatabaseService.createProspect({
           firstName: prospect.first_name.trim(),
           lastName: prospect.last_name.trim(),
           title: prospect.title?.trim() || null,
           company: (prospect.organization?.name || prospect.companyInfo?.name)?.trim() || null,
           email: prospect.email && prospect.email !== 'email_not_unlocked@domain.com' ? 
                  prospect.email.trim() : null,
-          phone: prospect.phone?.trim() || null,
+          phone: prospect.phone_number?.trim() || null,
           linkedinUrl: prospect.linkedin_url?.trim() || null,
           industry: (prospect.organization?.industry || prospect.companyInfo?.industry)?.trim() || null,
           location: this.formatLocation(prospect),
+          apolloContactId: prospect.id, // Store the Apollo contact ID
           status: 'NEW'
-        };
-
-        console.log('   📝 Data prepared:', {
-          name: `${prospectData.firstName} ${prospectData.lastName}`,
-          company: prospectData.company,
-          industry: prospectData.industry,
-          hasEmail: !!prospectData.email,
-          hasLinkedIn: !!prospectData.linkedinUrl
         });
-
-        // Store in database
-        const savedProspect = await DatabaseService.createProspect(prospectData);
+        
         stored++;
 
-        console.log(`   ✅ Stored successfully with ID: ${savedProspect.id}`);
+        console.log('   📝 Stored:', {
+          name: `${storedProspect.firstName} ${storedProspect.lastName}`,
+          company: storedProspect.company,
+          industry: storedProspect.industry,
+          hasEmail: !!storedProspect.email,
+          hasLinkedIn: !!storedProspect.linkedinUrl
+        });
+
+        console.log(`   ✅ Stored successfully with ID: ${storedProspect.id}`);
 
       } catch (error) {
         console.error(`   ❌ Error storing prospect:`, error.message);
@@ -117,6 +117,7 @@ class ProspectPipeline {
     return result;
   }
 
+  // Format location from prospect data
   formatLocation(prospect) {
     const city = prospect.city?.trim() || '';
     const state = prospect.state?.trim() || '';
@@ -176,10 +177,89 @@ class ProspectPipeline {
         industries: ['Financial Services', 'Investment Management', 'Banking'],
         companySizes: ['11,50', '51,200'],
         locations: ['United States']
+      },
+
+      // Web Developers (NEW TEMPLATE)
+      webDevelopers: {
+        jobTitles: ['Full Stack Developer', 'Frontend Developer', 'Backend Developer', 'Software Engineer', 'Web Developer'],
+        keywords: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Python', 'HTML', 'CSS'],
+        industries: ['Computer Software', 'Information Technology and Services', 'Internet'],
+        companySizes: ['11,50', '51,200', '201,500'],
+        locations: ['United States', 'Canada', 'United Kingdom']
+      },
+
+      // Czech Republic Developers (NEW TEMPLATE) 
+      czechDevelopers: {
+        jobTitles: ['Full Stack Developer', 'Software Engineer', 'Frontend Developer', 'Backend Developer', 'Web Developer'],
+        keywords: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Python'],
+        industries: ['Computer Software', 'Information Technology and Services', 'Internet'],
+        locations: ['Czech Republic', 'Prague', 'Czechia'],
+        companySizes: ['11,50', '51,200']
       }
     };
 
     return templates[templateName] || null;
+  }
+
+  // Get search criteria for specific use case
+  getCzechDeveloperCriteria() {
+    return {
+      jobTitles: [
+        'Full Stack Developer',
+        'Software Engineer', 
+        'Full Stack Engineer',
+        'Web Developer',
+        'Frontend Developer',
+        'Backend Developer'
+      ],
+      locations: ['Czech Republic', 'Prague', 'Czechia'],
+      keywords: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Python', 'Angular', 'Vue.js'],
+      industries: ['Computer Software', 'Information Technology and Services', 'Internet']
+    };
+  }
+
+  // Helper method for quick Czech developer search
+  async findCzechDevelopers(limit = 10) {
+    console.log('🔍 Quick search: Czech Republic Full Stack Developers');
+    
+    const criteria = this.getCzechDeveloperCriteria();
+    const result = await this.collectProspects(criteria);
+    
+    if (result.success && result.stored > 0) {
+      const prospects = await DatabaseService.getProspectsByStatus('NEW', limit);
+      return {
+        success: true,
+        count: prospects.length,
+        prospects: prospects
+      };
+    }
+    
+    return result;
+  }
+
+  // Helper method for any country developers
+  async findDevelopersByCountry(country, jobTypes = ['Full Stack Developer'], limit = 10) {
+    console.log(`🔍 Searching for developers in: ${country}`);
+    
+    const criteria = {
+      jobTitles: jobTypes,
+      locations: [country],
+      keywords: ['JavaScript', 'React', 'Node.js', 'TypeScript'],
+      industries: ['Computer Software', 'Information Technology and Services']
+    };
+    
+    const result = await this.collectProspects(criteria);
+    
+    if (result.success && result.stored > 0) {
+      const prospects = await DatabaseService.getProspectsByStatus('NEW', limit);
+      return {
+        success: true,
+        count: prospects.length,
+        prospects: prospects
+      };
+    }
+    
+    return result;
   }
 }
 

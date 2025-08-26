@@ -1,4 +1,4 @@
-// This is your Prisma schema file,
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,6 +19,7 @@ model Prospect {
   linkedinUrl          String?  @map("linkedin_url")
   industry             String?
   location             String?
+  apolloContactId      String?  @map("apollo_contact_id")
   
   // Status tracking
   status               ProspectStatus @default(NEW)

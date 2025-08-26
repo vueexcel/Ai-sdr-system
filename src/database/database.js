@@ -209,6 +209,21 @@ class DatabaseService {
     }
   }
 
+  static async getProspectById(id) {
+    try {
+      const prospect = await prisma.prospect.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          organization: true
+        }
+      });
+      return prospect;
+    } catch (error) {
+      console.error('Get prospect by ID error:', error);
+      throw error;
+    }
+  }
+
   // Analytics
   static async getProspectStats() {
     try {

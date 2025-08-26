@@ -227,63 +227,74 @@ class ApolloService {
     return allProspects;
   }
 
-  // Enhanced search with multiple strategies
-  async findAllProspects(searchCriteria) {
-    console.log('🎯 Starting comprehensive prospect search...');
-    console.log('🔍 Search criteria:', JSON.stringify(searchCriteria, null, 2));
-    let allProspects = [];
+// Enhanced search with multiple strategies
+async findAllProspects(searchCriteria) {
+  console.log('🎯 Starting comprehensive prospect search...');
+  console.log('🔍 Search criteria:', JSON.stringify(searchCriteria, null, 2));
+  let allProspects = [];
 
-    try {
-      // Strategy 1: Direct prospect search
-      console.log('\n📋 Strategy 1: Direct Prospect Search');
-      const directProspects = await this.findProspects(searchCriteria);
-      
-      if (directProspects.length > 0) {
-        allProspects.push(...directProspects);
-        console.log(`✅ Direct search: ${directProspects.length} prospects`);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Strategy 2: Company-first approach
-      console.log('\n📋 Strategy 2: Company → Prospects Approach');
-      const companies = await this.findCompanies(searchCriteria);
-
-      if (companies.length > 0) {
-        console.log(`🏢 Found ${companies.length} companies`);
-        
-        const companyProspects = await this.getProspectsFromCompanies(companies, {
-          jobTitles: searchCriteria.jobTitles,
-          seniorityLevel: searchCriteria.seniorityLevel,
-          maxCompanies: 10,
-          perCompanyLimit: 10
-        });
-        
-        if (companyProspects.length > 0) {
-          allProspects.push(...companyProspects);
-          console.log(`✅ Company-based search: ${companyProspects.length} prospects`);
-        }
-      }
-
-      // Remove duplicates based on email
-      const uniqueProspects = allProspects.reduce((unique, prospect) => {
-        const email = prospect.email;
-        if (email && email !== 'email_not_unlocked@domain.com' && !unique.find(p => p.email === email)) {
-          unique.push(prospect);
-        } else if (!email) {
-          unique.push(prospect); // Keep prospects without email for now
-        }
-        return unique;
-      }, []);
-
-      console.log(`\n🎉 Total unique prospects found: ${uniqueProspects.length}`);
-      return uniqueProspects;
-
-    } catch (error) {
-      console.error('❌ Comprehensive search error:', error);
-      return allProspects;
+  try {
+    // Strategy 1: Direct prospect search
+    console.log('\n📋 Strategy 1: Direct Prospect Search');
+    const directProspects = await this.findProspects(searchCriteria);
+    
+    if (directProspects.length > 0) {
+      allProspects.push(...directProspects);
+      console.log(`✅ Direct search: ${directProspects.length} prospects`);
     }
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Strategy 2: Company-first approach
+    console.log('\n📋 Strategy 2: Company → Prospects Approach');
+    const companies = await this.findCompanies(searchCriteria);
+
+    if (companies.length > 0) {
+      console.log(`🏢 Found ${companies.length} companies`);
+      
+      const companyProspects = await this.getProspectsFromCompanies(companies, {
+        jobTitles: searchCriteria.jobTitles,
+        seniorityLevel: searchCriteria.seniorityLevel,
+        maxCompanies: 10,
+        perCompanyLimit: 10
+      });
+      
+      if (companyProspects.length > 0) {
+        allProspects.push(...companyProspects);
+        console.log(`✅ Company-based search: ${companyProspects.length} prospects`);
+      }
+    }
+
+    // FIXED: Better duplicate removal logic
+    const uniqueProspects = [];
+    const seenIdentifiers = new Set();
+
+    for (const prospect of allProspects) {
+      // Create unique identifier from multiple fields
+      const identifier = [
+        prospect.first_name || '',
+        prospect.last_name || '',
+        prospect.email || 'no-email',
+        prospect.organization?.name || 'no-company'
+      ].join('|').toLowerCase();
+
+      if (!seenIdentifiers.has(identifier)) {
+        seenIdentifiers.add(identifier);
+        uniqueProspects.push(prospect);
+      }
+    }
+
+    console.log(`\n🎉 Total unique prospects found: ${uniqueProspects.length}`);
+    console.log(`📊 Removed ${allProspects.length - uniqueProspects.length} duplicates`);
+    
+    return uniqueProspects;
+
+  } catch (error) {
+    console.error('❌ Comprehensive search error:', error);
+    return allProspects;
   }
+}
+
 }
 
 module.exports = ApolloService;

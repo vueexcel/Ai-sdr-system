@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const prospectRoutes = require('./routes/prospects');
+const emailSequenceRoutes = require('./routes/emailSequences'); // Add this line
 const DatabaseService = require('./database/database');
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/prospects', prospectRoutes);
+app.use('/api/email-sequences', emailSequenceRoutes); // Add this line
 
 // Health check
 app.get('/health', async (req, res) => {
